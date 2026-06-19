@@ -62,7 +62,7 @@ for file in *.fastq; do
       -t 40
 
 ############################################################################################
-### IMPORT INTO USEARCH (CHANGE FASTA HEADERS INTO USEARCH RECCOGNISIBLE FORMAT AND CAT) ###
+#################################### IMPORT INTO USEARCH ###################################
 ############################################################################################
 
 eval "$(conda shell.bash hook)"
