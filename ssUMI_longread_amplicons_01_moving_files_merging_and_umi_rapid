@@ -1,33 +1,27 @@
 #!/bin/bash
 
 ################################################################################
-######### MOVE FILES FROM PORTABLE DRIVE TO HPC IN WINDOWNS POWERSHELL #########
+################################ MERGE RAW FILES ###############################
 ################################################################################
 
-scp -r "F:\ssUMI_amplicons_NLZOH_2025-08-18" "evagra1@nlzoh.si@vlmbngs2.nlzoh.si:/home/storage/finished_projects/EvaG/Study_compare/"
-
-################################################################################
-##################### MOVE TO HPC AND MERGE THE FILES ##########################
-################################################################################
-
+# Locate raw files
 cd home/storage/ssUMI_amplicons_NLZOH_2025-08-18
 
-### make output folder
+# Make output folder
 mkdir /home/storage/finished_projects/EvaG/ssUMI_amplicons_NLZOH_2025-08-18_merged
 
-### for each flowcell, merge all passed reads for each barcode
-### don't forget to delete barcodes that were not actually detected
+# For each flowcell, merge all passed reads for each barcode
 for folder in /home/storage/finished_projects/EvaG/ssUMI_amplicons_NLZOH_2025-08-18/ssUMI_amplicon_LIB2/20250818_1402_X2_FBC90119_1f64a87e/fastq_pass/*; do
   barcodename=$(basename "$folder")
   cat "$folder"/*.fastq.gz > /home/storage/finished_projects/EvaG/ssUMI_amplicons_NLZOH_2025-08-18_merged/"$barcodename"_L1.gz
 done
 
-### unzip these files (keep originals)
+# Unzip files (keep originals)
 for file in *.gz; do
     gunzip -c "$file" > "${file%.gz}"
 done
 
-### rename files using a list
+# Rename files using a list
 while IFS=';' read oldname newname ; do
   mv "$oldname" "$newname" ;
 done < rename_nanopore_samples.csv
@@ -36,18 +30,15 @@ done < rename_nanopore_samples.csv
 ########################## START ssUMI PIPELINE ################################
 ################################################################################
 
-### https://github.com/ZielsLab/ssUMI
-### ssUMI installation worked just as described on github - the old UMI pipeline is broken and ssUMI fixes it and installs new scripts
-### On this HPC we will do ssumi_rapid because we have no GPU.
-### ssumi_std (standard) command is the same, just replace umi with std, add -n and -T values
+# https://github.com/ZielsLab/ssUMI
+# Install ssUMI pipeline as described on GitHUb
+# Here, the rapid mode will be used, as it does not require a GPU
+# To use ssUMI in standard mode, replace ssumi_rapid with ssumi_std, add -n and -T values
 
-### Input file is a signle file containing raw Nanopore data in fastq format
-### Primers -F and -R anneal to 16S
-### Adaptors -f and -r are what connects the UMI tags (ssUMI-8F-UMI/ssUMI-1391R-UMI) and universal UMI multipying primers (ssUMI-Universal-F/ssUMI-Universal-R)
-### I am assuming that Nanopore adapors are recignised by porechop
-### Error rate filtering -E is different in ONT and Illumina because the quality scores are different
-### Medaka models are named after: {pore}_{device}_{caller variant}_{caller version} (caller meaning basecaller)
-### Updating models is weird because loyu have to state whic model to update. I am using a model that seems the most similar to the one I should be using for dorado 7
+# Input file is a signle file containing raw Nanopore data in fastq format
+# Primers -F and -R anneal to 16S
+# Adaptors -f and -r are what connects the UMI tags (ssUMI-8F-UMI/ssUMI-1391R-UMI) and universal UMI multipying primers (ssUMI-Universal-F/ssUMI-Universal-R)
+# Medaka models are named after: {pore}_{device}_{caller variant}_{caller version}
 
 srun -N 1 --mem=100GB --cpus-per-task=200 --pty /bin/bash
 
@@ -80,7 +71,7 @@ source activate usearch12.0-beta
 # Create output file
 > all_samples.fasta
 
-# Loop over all consensus umi sequences in all Sample folders and rename the headers, cat all into a new file
+# Rename fasta headers from ssUMi format [>umi3733bins;ubs=4] to usearch format: [Sample.37333 37333 ubs=5]
 for seq in */consensus_raconx3.fa; do
 
   folder=$(basename "$(dirname "$seq")")
@@ -99,116 +90,47 @@ for seq in */consensus_raconx3.fa; do
           ' "$seq" >> all_samples.fasta
 done
 
-### UNDERSTANDING CODE ###
-#
-# Rename fasta headers from this format in ssUMI:
-#                  >umi3733bins;ubs=4
-# To this format in Usearch pipeline (seen in merged.fq)
-#                  >Sample.37333 37333 ubs=5
-#
-# For sequence file in sample/consensus_raconx3.fa; do
-# folder is the basename of the directoryname
-# name is that folder with  "after_umi" removed
-#
-# awk -v meand that awk will get it's own variables (like it usually does)
-# s=$name is one of the awk variables, equal to the earlier variable name
-# '' single quotes are encompassing the awk command, so that the shell doesn't read it. Because of this, awk can use it's own variables ($1 ...)
-# /^>/ matches lines starting with >
-# {} curly braclets tells awk to run the commands for lines that match >
-#
-# match($0,/umi([0-9]+)/,a)
-# match(sttring, regex, array) searches for the regex in the string
-# $0 means it searches the whole line. it looks for umi followed by 1 or more digits: umi([0-9]+)
-# the match foes into a[0], and the thing in () brackets - the number by itself - goes into a[1]
-# there can be multiple () brackets in match to make more groups
-#
-# match($0,/ubs=[0-9]+/,b)
-# similarly looks at the whole line and matches to ubs=any_number, and saves it in b, and similaryl b[0] stands for the whole matche
-#
-# s (which stands for name) . a[1]   a[1]   b[0]  are printed - be careful, spaces are wrapped in " " here, and the arguments are not
-# lines without > are skipped
-# {print} the text from above culry brackets will be printed by awk, and print also has to be in curly brackets
-# here the awk ends by ''
-# for some shellreason all this appened in seq, so that seq is now apended >> to all.samples.fasta (> overwrites file, >> appends to it)
-
 ################################################################################
-################# EXTRACT UMI COUNTS TO GRAPH THEM #############################
+############################### WRITE OUT UMI COUNTS ###########################
 ################################################################################
 
-# echo Sample "tab" ubs_count into a file
+# Write counts into file
 echo -e "Sample_Name\tubs_count" > umi_counts.tsv
 
-# Extract and append the samples and counts
+# Format
 grep "^>" all_samples.fasta | awk -F'[. ]' '{
     sample=$1; gsub(">", "", sample);
     count=$4; gsub("ubs=", "", count);
     print sample "\t" count
 }' >> umi_counts.tsv
 
-### UNDERSTANDING THE CODE ###
-#
-# file format:
-#              sample.umi_number umi_number ubs=umi_coverage
-#              sequence
-#
-# grep finds lines that start with >
-#
-# there lines are seperated (awk) with the separator being . or "space"
-# '' single quotes are encompassing the awk command, so that the shell doesn't read it. Because of this, awk can use it's own variables ($1 ...)
-# {} curly braclets tells awk to run the commands for lines that match > as defined before
-# awk partitions $1 = sample, $2 and $3 = umi_number, $4 = ubs=umi_coverage
-#
-# $1 is renamed to sample, and > is substituted for nothing in sample
-# $4 is renamed to count, and ubs= is substitutted for nothing in count
-#
-# sample "tab" and count are printed into file
-# > overwrites file, >> appends to it
-
 ################################################################################
-######################### MAKE ZOTUS WITH USEARCH ##############################
+########################## MAKE ZOTUWITH USEARCH ##############################
 ################################################################################
 
-# I assume that adapters and primers are trimmed in UMI pipeline, and that maxee < 0.1 reads are removed
-# Start with finding uniques
-
-### FIND UNIQUE READ SEQUENCES AND ABUNDANCES ###
+# Find unique read counts and abundances
 usearch -fastx_uniques all_samples.fasta -sizeout -relabel Uniq -fastaout uniques.fa -threads 40
 
-### MAKE ZOTU ###
+# Denoise: predict biological sequences and filter chimeras
+usearch -unoise3 uniques.fa -zotus zotus.fa -relabel ZOTU -minsize 8 -threads 40
 
-      # Denoise: predict biological sequences and filter chimeras
-      # Minsize je nov trik ki ti da več sekvenc, ker se tukaj spet nekaj avtomatsko odstranjujejo sekvence ki so daljše (default = 8, za poskusit bi bilo 4 amapak ne bom popravljala?)
-      usearch -unoise3 uniques.fa -zotus zotus.fa -relabel ZOTU -minsize 8 -threads 40
-
-      # Make ZOTU table
-      # dodan biomeout, ki ga lahko importaš v QIIME2
-      usearch -otutab all_samples.fasta -otus zotus.fa -otutabout zotutab_raw.tsv -biomout ZOTUs.biom -threads 40
+# Make ZOTU table
+usearch -otutab all_samples.fasta -otus zotus.fa -otutabout zotutab_raw.tsv -biomout ZOTUs.biom -threads 40
 
 ################################################################################
-###################### PREDICTT TAXONOMY WITH QIIME ############################
+######################### PREDICT TAXONOMY WITH QIIME ##########################
 ################################################################################
 
 eval "$(conda shell.bash hook)"
 source activate qiime2-amplicon-2024.10
 
+# Import
 qiime tools import \
     --input-path zotus.fa \
     --output-path zotus.qza \
     --type 'FeatureData[Sequence]'
 
-# ne vem zakaj mi import biom tabele ne deluje...
-# biom tabele nisem importirala
-
-### BLAST ###
-qiime feature-classifier classify-consensus-blast \
-        --i-query zotus.qza \
-        --i-reference-reads /home/storage/DB/silva_qiime2/silva-138-99-seqs.qza \
-        --i-reference-taxonomy /home/storage/DB/silva_qiime2/silva-138-99-tax.qza \
-        --p-perc-identity 0.97 \
-        --o-classification blastZOTUclassification.qza \
-        --o-search-results blastZOTUsearch.qza
-
-### VSEARCH ###
+# Assign taxonomy with vsearch
 qiime feature-classifier classify-consensus-vsearch \
         --i-query zotus.qza \
         --i-reference-reads /home/storage/DB/silva_qiime2/silva-138-99-seqs.qza \
@@ -216,44 +138,3 @@ qiime feature-classifier classify-consensus-vsearch \
         --p-perc-identity 0.97 \
         --o-classification vsearchZOTUclassification.qza \
         --o-search-results vsearchZOTUsearch.qza
-
-################################################################################
-#################### BONUS: TRAIN SKLEARN AND CLASSIFY #########################
-################################################################################
-
-cd /home/storage/DB/silva_qiime2/
-
-### MAKE SEQUENCES ###
-
-qiime feature-classifier extract-reads \
-  --i-sequences /home/storage/DB/silva_qiime2/silva-138-99-seqs.qza \
-  --p-f-primer AGRGTTYGATYMTGGCTCAG \
-  --p-r-primer GACGGGCGGTGWGTRCA \
-  --p-min-length 1000 \
-  --p-max-length 2000 \
-  --o-reads /home/storage/DB/silva_qiime2/silva-138-99-ssUMI.qza
-
-### TRAIN CLASSIFIER ###
-
-qiime feature-classifier fit-classifier-naive-bayes \
-  --i-reference-reads /home/storage/DB/silva_qiime2/silva-138-99-ssUMI.qza \
-  --i-reference-taxonomy /home/storage/DB/silva_qiime2/silva-138-99-tax.qza \
-  --o-classifier classifiersilva_ssUMI.qza
-
-### CLASSIFY ###
-
-  qiime feature-classifier classify-sklearn \
-  --i-classifier /home/storage/DB/silva_qiime2/classifiersilva357F802RV2.qza \
-  --i-reads zotus.qza \
-  --o-classification sklearnZOTUclassification.qza
-
-
-  ### TREE ###
-
-qiime phylogeny align-to-tree-mafft-iqtree \
-          --i-sequences zotus.qza \
-          --p-seed 21 \
-          --o-alignment iqtree_alignment_umi.qza \
-          --o-masked-alignment iqtree_maksed_alignment_umi.qza \
-          --o-tree iqtree_tree_v1v3.qza \
-            --o-rooted-tree iqtree_masked_tree_umi.qza
