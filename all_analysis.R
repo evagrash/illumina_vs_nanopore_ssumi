@@ -1175,15 +1175,26 @@ l1_genus_data_avg <- l1_genus_wide %>%
     V1V3 = mean(V1V3),
     V3V4 = mean(V3V4))
 
+genus_colors <- c(
+  "Cutibacterium" = "#054A7A",
+  "Corynebacterium" = "#9ECAE1",
+  "Micrococcus" = "#9E9AC8",
+  "Kocuria" = "#CC79A7",
+  "Dermacoccus" = "#6A51A3",
+  "Acinetobacter" = "#148F77",
+  "Pseudomonas" = "#C7E9C0",
+  "Roseomonas" = "#DBD6D5",
+  "Staphylococcus" = "#FE9929")
+
 # Plot first comparison
 p1_genus <- ggplot(l1_genus_data_avg, aes(x = V1V9, y = V1V3, label = Genus2)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey") +
-  geom_point(size = 2) +
-  geom_text_repel(size = 3, max.overlaps = 15, segment.size = 0.3, force = 0.8, box.padding = 0.4) +
-  annotate("text", x = 0, y = 0.5 * 0.95,
-           label = paste0("L1 = ", round(l1_genus_values$L1_V1V9_V1V3, 2)), hjust = 0, size = 3) +
+  geom_point(shape = 21, size = 4, color = "black", aes(fill = Genus2)) +
+  scale_fill_manual(values = genus_colors, name = "Genus") +  
+  annotate("text", x = 0, y = 0.5 * 0.95, label = paste0("L1 = ", round(l1_genus_values$L1_V1V9_V1V3, 2)), hjust = 0, size = 3) +
   labs(x = "ssUMI V1-V9 ONT", y = "V1-V3 Illumina", title = "") +
-  xlim(0, 0.5) + ylim(0, 0.5) +
+  xlim(0, 0.5) + 
+  ylim(0, 0.5) +
   theme_bw()+
   theme(legend.position = "none",
         axis.title.x = element_text(size = 9),
@@ -1194,13 +1205,13 @@ p1_genus <- ggplot(l1_genus_data_avg, aes(x = V1V9, y = V1V3, label = Genus2)) +
 
 # Plot second comparison
 p2_genus <- ggplot(l1_genus_data_avg, aes(x = V1V9, y = V3V4, label = Genus2)) +
-  geom_abline(slope = 2, intercept = 0, linetype = "dashed", color = "grey") +
-  geom_point(size = 2) +
-  geom_text_repel(size = 3, max.overlaps = 15, segment.size = 0.3, force = 0.8, box.padding = 0.4) +
-  annotate("text", x = 0, y = 0.5 * 0.95,
-           label = paste0("L1 = ", round(l1_genus_values$L1_V1V9_V3V4, 2)), hjust = 0, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey") +
+  geom_point(shape = 21, size = 4, color = "black", aes(fill = Genus2)) +
+  scale_fill_manual(values = genus_colors, name = "Genus") + 
+  annotate("text", x = 0, y = 0.5 * 0.95, label = paste0("L1 = ", round(l1_genus_values$L1_V1V9_V3V4, 2)), hjust = 0, size = 3) +
   labs(x = "ssUMI V1-V9 ONT", y = "V3-V4 Illumina", title = "") +
-  xlim(0, 0.5) + ylim(0, 0.5) +
+  xlim(0, 0.5) + 
+  ylim(0, 0.5) +
   theme_bw() +
   theme(legend.position = "none",
         axis.title.x = element_text(size = 9),
@@ -1209,17 +1220,17 @@ p2_genus <- ggplot(l1_genus_data_avg, aes(x = V1V9, y = V3V4, label = Genus2)) +
         panel.border = element_rect(linewidth = 0.5)) +
   coord_fixed(ratio = 1)
 
-# Plot third comparison
+# Plot third comparison (this one keeps its legend, which we'll extract)
 p3_genus <- ggplot(l1_genus_data_avg, aes(x = V1V3, y = V3V4, label = Genus2)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey") +
-  geom_point(size = 2) +
-  geom_text_repel(size = 3, max.overlaps = 15, segment.size = 0.3, force = 1, box.padding = 0.4) +
-  annotate("text", x = 0, y = 0.5 * 0.95,
-           label = paste0("L1 = ", round(l1_genus_values$L1_V1V3_V3V4, 2)), hjust = 0, size = 3) +
+  geom_point(shape = 21, size = 4, color = "black", aes(fill = Genus2)) +
+  scale_fill_manual(values = genus_colors, name = "Genus") + 
+  annotate("text", x = 0, y = 0.5 * 0.95, label = paste0("L1 = ", round(l1_genus_values$L1_V1V3_V3V4, 2)), hjust = 0, size = 3) +
   labs(x = "V1-V3 Illumina", y = "V3-V4 Illumina", title = "") +
   theme_bw()+
-  xlim(0, 0.5) + ylim(0, 0.5) +
-  theme(legend.position = "none",
+  xlim(0, 0.5) + 
+  ylim(0, 0.5) +
+  theme(legend.position = "right",
         axis.title.x = element_text(size = 9),
         axis.title.y = element_text(size = 9),
         axis.text  = element_text(size = 6),
@@ -1228,9 +1239,7 @@ p3_genus <- ggplot(l1_genus_data_avg, aes(x = V1V3, y = V3V4, label = Genus2)) +
 
 # Join
 top_row <- cowplot::plot_grid(p1_genus, p2_genus, ncol = 2, labels = c("A", "B"))
-
-bottom_row <- cowplot::plot_grid(NULL, p3_genus, NULL, ncol = 3, rel_widths = c(0.5, 1, 0.3), 
-                                 labels = c("", "C", ""))
+bottom_row <- cowplot::plot_grid(p3_genus, ncol = 1, labels = c("C"))
 
 combined_l1_genus <- cowplot::plot_grid(top_row, bottom_row, ncol = 1)
 
@@ -1258,16 +1267,15 @@ n_primers <- 3  # V1V3, V3V4, V1V9
 library(ggh4x)
 
 all_skin_species <- theoretical_plus_melt %>%
-  filter(Primers == "Theoretical") %>%
   distinct(Species2) %>%
   pull(Species2)
 
 heatmap1 <- theoretical_plus_melt_weighted %>% 
   filter(Primers != "Theoretical", Species2 != "Other (other)") %>%
-  complete(Primers, Species2 = all_skin_species) %>%   # force expansion against the FULL theoretical species list
-  ggplot(aes(x = factor(Primers, levels = c("V1V9", "V3V4", "V1V3")),
-             y = Species2,
-             fill = weighted_consensus)) +
+  complete(Primers, Species2 = all_skin_species) %>%  # expand to full species list
+  mutate(Species2 = factor(Species2, levels = rev(sort(unique(Species2))))) %>% 
+  
+  ggplot(aes(x = factor(Primers, levels = c("V1V9", "V3V4", "V1V3")), y = Species2, fill = weighted_consensus)) +
   geom_tile(width = 0.95, height = 0.95, color = "white", linewidth = 0.3) +
   scale_fill_gradient(low = "#F2F2F6", high = "#26267C",
                       name = "Weighted consensus",
@@ -1280,16 +1288,9 @@ heatmap1 <- theoretical_plus_melt_weighted %>%
   labs(x = "", y = "") +
   theme(
     legend.position = "none",
-    axis.title.x = element_text(size = 8, margin = margin(t = 10)),
-    axis.title.y = element_text(size = 8, margin = margin(r = 10)),
-    axis.text.x  = element_text(size = 8),
-    axis.text.y  = element_text(size = 8),
-    legend.text  = element_text(size = 6),
-    legend.title = element_text(size = 8),
-    legend.title.position = "top",
     panel.border = element_rect(linewidth = 0.5)) +
   force_panelsizes(rows = unit(length(all_skin_species) * 4, "mm"),
-                   cols = unit(n_primers * 15, "mm"))
+                   cols = unit(n_primers * 16, "mm"))
 
 ######### SKIN MOCK COMMUNITY ALPHA DIVERISTY MEASURES ON SPECIES LEVEL ########
 
@@ -1499,18 +1500,16 @@ n_primers <- 3  # V1V3, V3V4, V1V9
 # Plot
 
 all_staph_species <- staph_theoretical_plus_melt %>%
-  filter(Primers == "Theoretical") %>%
   distinct(Species2) %>%
   pull(Species2)
 
 heatmap2 <- staph_theoretical_plus_melt_weighted %>% 
   filter(Primers != "Theoretical", Species2 != "Other (other)", !is.na(Primers)) %>%
-  mutate(Primers = droplevels(factor(Primers))) %>%   # remove unused factor levels
-  complete(Primers, Species2 = all_staph_species) %>% # force expansion against the FULL theoretical species list
+  mutate(Primers = droplevels(factor(Primers))) %>%
+  complete(Primers, Species2 = all_staph_species) %>% # expand to full species list
+  mutate(Species2 = factor(Species2, levels = rev(sort(unique(Species2))))) %>% 
   
-  ggplot(aes(x = factor(Primers, levels = c("V1V9", "V3V4", "V1V3")),
-             y = Species2,
-             fill = weighted_consensus)) +
+  ggplot(aes(x = factor(Primers, levels = c("V1V9", "V3V4", "V1V3")), y = Species2, fill = weighted_consensus)) +
   geom_tile(width = 0.95, height = 0.95, color = "white", linewidth = 0.3) +
   scale_fill_gradient(low = "#F2F2F6", high = "#26267C",
                       name = "Weighted consensus",
@@ -1523,25 +1522,19 @@ heatmap2 <- staph_theoretical_plus_melt_weighted %>%
   labs(x = "", y = "") +
   theme(
     legend.position = "bottom",
-    axis.title.x = element_text(size = 8, margin = margin(t = 10)),
-    axis.title.y = element_text(size = 8, margin = margin(r = 10)),
-    axis.text.x  = element_text(size = 8),
-    axis.text.y  = element_text(size = 8),
-    legend.text  = element_text(size = 6),
-    legend.title = element_text(size = 8),
     legend.title.position = "top",
     panel.border = element_rect(linewidth = 0.5)) +
   force_panelsizes(rows = unit(length(all_staph_species) * 4, "mm"),
-                   cols = unit(n_primers * 15, "mm"))
+                   cols = unit(n_primers * 16, "mm"))
 
 # Join
+n_rows_top <- length(all_skin_species)
+n_rows_bottom <- length(all_staph_species)
 
-combined_heatmaps <- cowplot::plot_grid(heatmap1, heatmap2, 
-                                        ncol = 1, 
-                                        align = "v", labels = c("A", "B"))
+combined_heatmaps <- cowplot::plot_grid(heatmap1, heatmap2, ncol = 1, align = "v", labels = c("A", "B"), rel_heights = c(n_rows_top, n_rows_bottom + 5))
 
-ggsave("~/R/nanopore_vs_illumina_2025/Paper_images_ideas/combined_heatmaps.pdf", combined_heatmaps, width = 170, height = 200, units = "mm", dpi = 600)
-ggsave("~/R/nanopore_vs_illumina_2025/Paper_images_ideas/combined_heatmaps.svg", combined_heatmaps, width = 170, height = 200, units = "mm", dpi = 600)
+ggsave("~/R/nanopore_vs_illumina_2025/Paper_images_ideas/combined_heatmaps.pdf", combined_heatmaps, width = 170, height = 250, units = "mm", dpi = 600)
+ggsave("~/R/nanopore_vs_illumina_2025/Paper_images_ideas/combined_heatmaps.svg", combined_heatmaps, width = 170, height = 250, units = "mm", dpi = 600)
 
 #### STAPHYLOCOCCAL MOCK COMMUNITY ALPHA DIVERISTY MEASURES ON SPECIES LEVEL ###
 
@@ -1582,4 +1575,6 @@ staph_shannon_ttest <- staph_alpha_mokc %>%
     p.adjust.method = "bonferroni",
     paired = FALSE,
     detailed = TRUE)
+
+
 
