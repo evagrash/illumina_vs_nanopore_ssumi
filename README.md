@@ -6,5 +6,3 @@ Content:
 - ssUMI_pipeline_and_amplicons.sh (merges UMI-tagged reads into consensus sequences, creates a ZOTU table, and assigns taxonomy to Nanopore reads)
 - Illumina_amplicons (creates a ZOTU table and assigns taxonomy to Illumina reads)
 - all_analysis.R (imports data into R; compares reads in two mock communities and five biological samples across different taxonomic levels)
-
-Paper (TBA):
