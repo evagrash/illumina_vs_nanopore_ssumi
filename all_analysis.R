@@ -597,7 +597,7 @@ bd_dist_v1v3 <- bd_v1v3$distances %>%
 
 # ssUMI
 metadata_ssumi_filt <- metadata %>% 
-  filter(Sample %in% c("MP_03_G1", "MP_03_L1", "MP_03_M1", "MP_03_N1", "MP_03_U1"))
+  filter(Sample %in% c("MP_03_A1", "MP_03_B1", "MP_03_C1", "MP_03_D1", "MP_03_E1"))
 
 bd_ssumi <- betadisper(dissimilarity_ssumi, metadata_ssumi_filt$sample_mock_control)
 
@@ -842,7 +842,7 @@ genus_bd_dist_v1v3 <- genus_bd_v1v3$distances %>%
 
 # ssUMI
 metadata_ssumi_filt <- metadata %>% 
-  filter(Sample %in% c("MP_03_G1", "MP_03_L1", "MP_03_M1", "MP_03_N1", "MP_03_U1"))
+  filter(Sample %in% c("MP_03_A1", "MP_03_B1", "MP_03_C1", "MP_03_D1", "MP_03_E1"))
 
 genus_bd_ssumi <- betadisper(genus_dissimilarity_ssumi, metadata_ssumi_filt$sample_mock_control)
 
