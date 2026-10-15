@@ -48,8 +48,8 @@ usearch -fastx_uniques filteredv3v4.fa -sizeout -relabel Uniq -minuniquesize 2 -
 usearch -fastx_uniques filteredv1v3.fa -sizeout -relabel Uniq -minuniquesize 2 -fastaout uniquesv1v3.fa -threads $60 # (75.2% uniques)
 
 # Denoise
-usearch -unoise3 uniquesv3v4.fa -zotus zotusv3v4.fa -relabel ZOTU -threads 60 # (57,4 % chimeras)
-usearch -unoise3 uniquesv1v3.fa -zotus zotusv1v3.fa -relabel ZOTU -threads 60 # (40,2% chimeras)
+usearch -unoise3 uniquesv3v4.fa -zotus zotusv3v4.fa -relabel ZOTU -threads 60 -minsize 8 # default minsize (57,4 % chimeras)
+usearch -unoise3 uniquesv1v3.fa -zotus zotusv1v3.fa -relabel ZOTU -threads 60 -minsize 8 # default minsize (40,2% chimeras)
 
 # ZOTU table
 usearch -otutab mergedv3v4.fq -otus zotusv3v4.fa -otutabout zotutab_rawv3v4.tsv -biomout ZOTUsv3v4.biom -threads 60  # (89.3% mapped)
