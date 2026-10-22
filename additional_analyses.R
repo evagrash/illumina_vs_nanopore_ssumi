@@ -4,7 +4,7 @@
 #                                                                              #
 ################################################################################
 
-# source("~/R/nanopore_vs_illumina_2025/for_publication.R")
+# source("~/R/nanopore_vs_illumina_2025/analyses.R")
 
 ########################################################################################
 # Reviewer 1 Major comment 4: Number of sequences (library size) per sample and method #
