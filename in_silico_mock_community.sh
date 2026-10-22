@@ -193,3 +193,17 @@ for region in V1V9 V1V3 V3V4; do
 done
 
 
+################################################################################
+
+# Count species and genus in SILVA DB
+
+unzip -p /home/storage/DB/silva_qiime2/silva-138-99-tax.qza "*/data/taxonomy.tsv" > /tmp/silva_tax.tsv
+
+while IFS= read -r species; do
+    silva_name=$(echo "$species" | tr ' ' '_')
+    genus=$(echo "$species" | awk '{print $1}')
+    species_count=$(grep -w "$silva_name" /home/storage/finished_projects/EvaG/20261014_mock_community_in_silico/silva_all_counts.txt | awk '{print $1}')
+    genus_count=$(grep "g__${genus};" /tmp/silva_tax.tsv | wc -l)
+    echo "${species_count:-0}  $species  ($genus_count)"
+done < /home/storage/finished_projects/EvaG/20261014_mock_community_in_silico/taxon_list.txt > /home/storage/finished_projects/EvaG/20261014_mock_community_in_silico/mock_silva_reference_counts.txt
+
