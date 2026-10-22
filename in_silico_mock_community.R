@@ -21,7 +21,7 @@ species_counts <- step1 %>%
 
 print(species_counts, n = Inf)
 
-# STEP 2: For species with > max_genomes, apply 4 contig filter
+# For species with > max_genomes, apply 4 contig filter
 step2 <- step1 %>%
   group_by(species) %>%
   mutate(n_step1 = n()) %>%
@@ -36,7 +36,7 @@ species_counts <- step2 %>%
 
 print(species_counts, n = Inf)
 
-# STEP 3: Keep all if n <= max_genomes, randomly select max_genomes if n > max_genomes
+# Keep all if n <= max_genomes, randomly select max_genomes if n > max_genomes
 step3 <- step2 %>%
   group_by(species) %>%
   group_modify(~ slice_sample(.x, n = min(nrow(.x), 40))) %>%
@@ -63,6 +63,9 @@ library(tidyverse)
 library(qiime2R)
 
 # IMPORT -----------------------------------------------------------------------
+
+# source("~/R/nanopore_vs_illumina_2025/analyses.R")
+# source("~/R/nanopore_vs_illumina_2025/additional_analyses.R")
 
 insilico_v1v3_otutab <- read_tsv("~/R/nanopore_vs_illumina_2025/in_silico_mock/V1V3_zotutab.tsv") %>% 
   column_to_rownames("#OTU ID")
@@ -103,60 +106,20 @@ read_zotu <- function(df, region) {
 tax_all <- bind_rows(
   insilico_v1v3_vtax %>% mutate(Primers = "V1V3"),
   insilico_v3v4_vtax %>% mutate(Primers = "V3V4"),
-  insilico_v1v9_vtax %>% mutate(Primers = "V1V9")
-)
+  insilico_v1v9_vtax %>% mutate(Primers = "V1V9"))
 
 all_zotus <- bind_rows(
   read_zotu(insilico_v1v3_otutab, "V1V3"),
   read_zotu(insilico_v3v4_otutab, "V3V4"),
-  read_zotu(insilico_v1v9_otutab, "V1V9")
-) %>%
+  read_zotu(insilico_v1v9_otutab, "V1V9")) %>%
   left_join(
     meta %>% mutate(Accession = str_remove(`Assembly Accession`, "\\.\\d+$")),
-    by = "Accession"
-  ) %>%
+    by = "Accession") %>%
   left_join(tax_all, by = c("ZOTU" = "OTU", "Primers"))
 
-# ZOTUS PER SPECIES PER PRIMER WITH CLASSIFICATIONS ---------------------------
+# DETECTION TABLE IN SEQUENCED MOCKS -------------------------------------------
 
-zotus_per_species <- all_zotus %>%
-  mutate(
-    display_tax = case_when(
-      is.na(Species)                               ~ paste0(Genus, " NA"),
-      str_detect(Species, "uncultured|metagenome") ~ paste0(Genus, " uncultured bacterium"),
-      TRUE                                         ~ Species
-    )
-  ) %>%
-  group_by(species, Primers, ZOTU, display_tax) %>%
-  summarise(n_strains_per_zotu = n_distinct(Accession), .groups = "drop") %>%
-  group_by(species, Primers, display_tax) %>%
-  summarise(
-    n_zotus_this_tax    = n_distinct(ZOTU),
-    n_strains_this_tax  = sum(n_strains_per_zotu),
-    .groups = "drop"
-  ) %>%
-  group_by(species, Primers) %>%
-  summarise(
-    n_zotus         = sum(n_zotus_this_tax),
-    n_strains       = sum(n_strains_this_tax),
-    classifications = paste0(
-      display_tax, " (", n_zotus_this_tax, " ZOTUs, ", n_strains_this_tax, "x)",
-      collapse = "; "
-    ),
-    .groups = "drop"
-  ) %>%
-  arrange(Primers, desc(n_zotus))
-
-# SPECIES WHERE ALL ZOTUs ARE UNCLASSIFIABLE -----------------------------------
-
-all_unclassified <- all_zotus %>%
-  mutate(bad_tax = is.na(Species) | 
-           str_detect(Species, "uncultured|metagenome")) %>%
-  group_by(species, Primers) %>%
-  summarise(all_undetected = all(bad_tax), .groups = "drop") %>%
-  filter(all_undetected)
-
-# REAL MOCK: MISSED SPECIES ----------------------------------------------------
+all_primers <- c("V1V3", "V1V9", "V3V4")
 
 all_mock_data <- bind_rows(theoretical_plus_melt, staph_theoretical_plus_melt)
 
@@ -174,15 +137,10 @@ missed_species <- theoretical_species %>%
   crossing(Primers = unique(detected_species$Primers)) %>%
   anti_join(detected_species, by = c("Person", "Species", "Primers")) %>%
   filter(Primers != "Theoretical")
-
-# DETECTION TABLE --------------------------------------------------------------
-
-all_primers <- c("V1V3", "V1V9", "V3V4")
-
+            
 theoretical_combos <- bind_rows(
-  theoretical_mock      %>% mutate(species = str_replace_all(Species, "_", " ")),
-  theoretical_staph_mock %>% mutate(species = str_replace_all(Species, "_", " "))
-) %>%
+  theoretical_mock %>% mutate(species = str_replace_all(Species, "_", " ")),
+  theoretical_staph_mock %>% mutate(species = str_replace_all(Species, "_", " "))) %>%
   distinct(species) %>%
   crossing(Primers = all_primers)
 
@@ -199,65 +157,12 @@ detected_labels <- all_zotus %>%
 
 detection_table <- theoretical_combos %>%
   left_join(detected_labels, by = c("species", "Primers")) %>%
-  left_join(missed_any,      by = c("species", "Primers")) %>%
+  left_join(missed_any, by = c("species", "Primers")) %>%
   mutate(
     insilico_detected = !is.na(label_found),
-    detected_real     = is.na(missed_real)
-  ) %>%
+    detected_real = is.na(missed_real)) %>%
   select(species, Primers, insilico_detected, detected_real) %>%
   arrange(species, Primers)
-
-# MISCLASSIFIED SPECIES --------------------------------------------------------
-
-misclassified <- zotus_per_species %>%
-  rowwise() %>%
-  mutate(
-    wrong_species = {
-      matches <- str_extract_all(classifications, "[A-Z][a-z]+ [a-z]+")[[1]]
-      wrong   <- matches[matches != species &
-                           !str_detect(matches, "uncultured")]
-      if (length(wrong) == 0) NA_character_ else paste(wrong, collapse = "; ")
-    }
-  ) %>%
-  ungroup() %>%
-  filter(!is.na(wrong_species)) %>%
-  select(species, Primers, wrong_species, classifications)
-
-# FINAL SUMMARY TABLE ----------------------------------------------------------
-
-parse_classifications <- function(classif_string, correct_species) {
-  parts <- str_split(classif_string, "; ")[[1]]
-  correct <- wrong <- genus_only <- unclassified <- 0L
-  for (part in parts) {
-    n <- as.integer(str_extract(part, "(?<=\\()\\d+(?= ZOTUs)"))
-    if      (str_detect(part, "uncultured"))              unclassified <- unclassified + n
-    else if (str_detect(part, " NA "))                    genus_only   <- genus_only   + n
-    else if (str_detect(part, fixed(correct_species)))    correct      <- correct      + n
-    else                                                  wrong        <- wrong        + n
-  }
-  list(correct = correct, wrong = wrong, genus_only = genus_only, unclassified = unclassified)
-}
-
-zotus_classified <- zotus_per_species %>%
-  rowwise() %>%
-  mutate(
-    parsed       = list(parse_classifications(classifications, species)),
-    n_correct    = parsed$correct,
-    n_wrong      = parsed$wrong,
-    n_genus_only = parsed$genus_only,
-    n_uncultured = parsed$unclassified,
-    display      = paste0(n_correct, " / ", n_wrong, " / ", n_genus_only + n_uncultured)
-  ) %>%
-  ungroup()
-
-zotus_wide <- zotus_classified %>%
-  select(species, Primers, display) %>%
-  pivot_wider(names_from = Primers, values_from = display,
-              names_prefix = "zotus_", values_fill = "0 / 0 / 0")
-
-n_strains_true <- all_zotus %>%
-  group_by(species) %>%
-  summarise(No_strains = n_distinct(Accession), .groups = "drop")
 
 detection_wide <- detection_table %>%
   pivot_wider(names_from = Primers, values_from = c(insilico_detected, detected_real)) %>%
@@ -267,55 +172,9 @@ detection_wide <- detection_table %>%
     insilico_V1V3 = insilico_detected_V1V3,
     mock_V1V9     = detected_real_V1V9,
     mock_V3V4     = detected_real_V3V4,
-    mock_V1V3     = detected_real_V1V3
-  )
+    mock_V1V3     = detected_real_V1V3)
 
-final_table <- detection_wide %>%
-  left_join(n_strains_true, by = "species") %>%
-  left_join(zotus_wide,     by = "species") %>%
-  select(
-    species, No_strains,
-    zotus_V1V9, insilico_V1V9, mock_V1V9,
-    zotus_V3V4, insilico_V3V4, mock_V3V4,
-    zotus_V1V3, insilico_V1V3, mock_V1V3
-  ) %>%
-  arrange(species)
-
-print(final_table,   n = 50)
-# n_correct / n_wrong / n_unclassified; species detected in silico; species detected in mock
-# fix cutibacterium striatum manually :( Idk what is wrong
-
-write_csv2(final_table, "final_in_silico_mock_table.csv")
-
-print(misclassified, n = 50)
-
-
-# REAL MOCK: DETECTION SUMMARY -------------------------------------------------
-
-false_positives <- detected_species %>%
-  anti_join(theoretical_species, by = c("Person", "Species")) %>%
-  filter(!is.na(Species),
-         !str_detect(Species, "uncultured|metagenome"))
-
-# Missed species: wide format with status per primer
-missed_wide <- missed_species %>%
-  mutate(species = str_replace_all(Species, "_", " ")) %>%
-  select(Person, species, Primers) %>%
-  mutate(missed = TRUE) %>%
-  pivot_wider(names_from = Primers, values_from = missed, values_fill = FALSE) %>%
-  arrange(Person, species)
-
-# False positives: summarised per mock and primer
-false_positives_summary <- false_positives %>%
-  mutate(species = str_replace_all(Species, "_", " ")) %>%
-  select(Person, Primers, species, total_abundance) %>%
-  arrange(Person, Primers, desc(total_abundance))
-
-print(missed_wide,            n = 50)
-print(false_positives_summary, n = 50)
-
-# FINAL DETECTION TABLE WITH READS #############################################
-# this is in the supplementary results!
+# FINAL TABLE WITH READS AND DETECTION ########################################
 
 # CLASSIFY ZOTUS DIRECTLY FROM all_zotus --------------------------------------
 
@@ -323,40 +182,33 @@ zotus_classified <- all_zotus %>%
   mutate(
     tax_cat = case_when(
       is.na(Species) | str_detect(Species, "uncultured|metagenome") ~ "genus",
-      Species == species                                             ~ "correct",
-      TRUE                                                           ~ "wrong"
-    )
-  ) %>%
+      Species == species ~ "correct",
+      TRUE ~ "wrong")) %>%
   group_by(species, Primers, tax_cat) %>%
   summarise(
     n_zotus = n_distinct(ZOTU),
     n_reads = sum(count),
-    .groups = "drop"
-  ) %>%
+    .groups = "drop") %>%
   pivot_wider(
     names_from  = tax_cat,
     values_from = c(n_zotus, n_reads),
-    values_fill = 0
-  ) %>%
-  # ensure all columns exist even if a category never appears
+    values_fill = 0) %>%
   mutate(
     across(any_of(c("n_zotus_correct", "n_zotus_wrong", "n_zotus_genus",
                     "n_reads_correct", "n_reads_wrong", "n_reads_genus")),
            ~ replace_na(., 0)),
     col_correct = paste0(n_zotus_correct, " (", n_reads_correct, ")"),
-    col_wrong   = paste0(n_zotus_wrong,   " (", n_reads_wrong,   ")"),
-    col_genus   = paste0(n_zotus_genus,   " (", n_reads_genus,   ")")
-  )
+    col_wrong = paste0(n_zotus_wrong, " (", n_reads_wrong, ")"),
+    col_genus = paste0(n_zotus_genus, " (", n_reads_genus, ")"))
 
 # WIDE FORMAT ------------------------------------------------------------------
 
 zotus_wide <- zotus_classified %>%
   select(species, Primers, col_correct, col_wrong, col_genus) %>%
   pivot_wider(
-    names_from  = Primers,
+    names_from = Primers,
     values_from = c(col_correct, col_wrong, col_genus),
-    values_fill = "0 (0)"
-  )
+    values_fill = "0 (0)")
 
 # FINAL TABLE ------------------------------------------------------------------
 
@@ -366,17 +218,14 @@ n_strains_true <- all_zotus %>%
 
 final_table <- detection_wide %>%
   left_join(n_strains_true, by = "species") %>%
-  left_join(zotus_wide,     by = "species") %>%
-  select(
-    species, No_strains,
+  left_join(zotus_wide, by = "species") %>%
+  select(species, No_strains,
     col_correct_V1V9, col_wrong_V1V9, col_genus_V1V9, mock_V1V9,
     col_correct_V3V4, col_wrong_V3V4, col_genus_V3V4, mock_V3V4,
-    col_correct_V1V3, col_wrong_V1V3, col_genus_V1V3, mock_V1V3
-  ) %>%
+    col_correct_V1V3, col_wrong_V1V3, col_genus_V1V3, mock_V1V3) %>%
   mutate(across(starts_with("mock_"), ~ ifelse(., "Y", "N"))) %>%
   arrange(species)
 
-print(final_table, n = 50)
 write_csv2(final_table, "final_in_silico_mock_table.csv")
 
 # SHARED ZOTUS -----------------------------------------------------------------  
@@ -388,16 +237,52 @@ shared_all <- all_zotus %>%
   summarise(
     source_species = paste(unique(species), collapse = "; "),
     n_reads = sum(count),
-    .groups = "drop"
-  ) %>%
+    .groups = "drop") %>%
   group_by(Primers, ZOTU) %>%
   mutate(
     all_sources = paste(unique(source_species), collapse = "; "),
-    n_species = n_distinct(source_species)
-  ) %>%
+    n_species = n_distinct(source_species)) %>%
   ungroup() %>%
   select(Primers, ZOTU, all_sources, classified_as = Species, n_reads) %>%
   distinct() %>%
   arrange(Primers, ZOTU)
 
-print(shared_all, n = 50)
+# ZOTUS PER SPECIES PER PRIMER WITH CLASSIFICATIONS ---------------------------
+
+zotus_per_species <- all_zotus %>%
+  mutate(
+    display_tax = case_when(
+      is.na(Species) ~ paste0(Genus, " NA"),
+      str_detect(Species, "uncultured|metagenome") ~ paste0(Genus, " uncultured bacterium"),
+      TRUE  ~ Species)) %>%
+  group_by(species, Primers, ZOTU, display_tax) %>%
+  summarise(n_strains_per_zotu = n_distinct(Accession), .groups = "drop") %>%
+  group_by(species, Primers, display_tax) %>%
+  summarise(
+    n_zotus_this_tax = n_distinct(ZOTU),
+    n_strains_this_tax = sum(n_strains_per_zotu),
+    .groups = "drop") %>%
+  group_by(species, Primers) %>%
+  summarise(
+    n_zotus = sum(n_zotus_this_tax),
+    n_strains = sum(n_strains_this_tax),
+    classifications = paste0(
+      display_tax, " (", n_zotus_this_tax, " ZOTUs, ", n_strains_this_tax, "x)",
+      collapse = "; "),
+    .groups = "drop") %>%
+  arrange(Primers, desc(n_zotus))
+
+# MISCLASSIFIED SPECIES --------------------------------------------------------
+
+misclassified <- zotus_per_species %>%
+  rowwise() %>%
+  mutate(
+    wrong_species = {
+      matches <- str_extract_all(classifications, "[A-Z][a-z]+ [a-z]+")[[1]]
+      wrong <- matches[matches != species &
+                       !str_detect(matches, "uncultured")]
+      if (length(wrong) == 0) NA_character_ else paste(wrong, collapse = "; ")}) %>%
+  ungroup() %>%
+  filter(!is.na(wrong_species)) %>%
+  select(species, Primers, wrong_species, classifications)
+
