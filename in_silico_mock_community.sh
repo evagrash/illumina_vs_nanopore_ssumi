@@ -1,7 +1,6 @@
+#!/bin/bash
 
-# SRUN
-
-# create taxon list with all species names and search for the species names in NCBI
+# Create taxon list with all species names and search for the species names in NCBI
 
 datasets summary genome taxon \
   --inputfile taxon_list.txt \
@@ -14,10 +13,10 @@ dataformat tsv genome \
 accession,organism-name,organism-tax-id,organism-infraspecific-strain,organism-infraspecific-isolate,assminfo-biosample-strain,assminfo-biosample-collected-by,assminfo-biosample-isolation-source,ani-check-status,assminfo-sequencing-tech,assmstats-total-number-of-chromosomes,assmstats-number-of-contigs,assminfo-level,assminfo-atypicalis-atypical,assmstats-genome-coverage,assminfo-release-date,annotinfo-pipeline,annotinfo-release-date,assmstats-total-sequence-len,assmstats-contig-n50,assmstats-gc-percent,checkm-completeness,checkm-contamination,annotinfo-busco-complete,annotinfo-busco-lineage,annotinfo-featcount-gene-total,annotinfo-featcount-gene-protein-coding,type_material-display_text,assminfo-submitter,assminfo-biosample-accession,assminfo-bioproject \
 > mock_community_genomes_metadata.tsv
 
-# filter table in R
-# import back into HPC
+# Filter resulting table in R (see in_silico_mock_community.R)
+# Import back into HPC
 
-# download genomes
+# Download genomes
 
 mkdir files
 
@@ -27,7 +26,7 @@ while read acc; do
     --filename "files/${acc}.zip"
 done < selected_accessions.tsv
 
-# unzip genomes
+# Unzip genomes
 
 mkdir temp_unzipped
 
@@ -36,7 +35,7 @@ name=$(basename "$z" .zip)
 unzip -o "$z" -d "temp_unzipped/$name";
 done
 
-# move actual genomes out of subfolders
+# Move actual genomes out of subfolders
 
 mkdir fasta_files
 
@@ -44,7 +43,7 @@ cp temp_unzipped/*/ncbi_dataset/data/*/*.fna fasta_files/
 
 ls fasta_files/*.fna | wc -l
 
-# use barrnap to extract rrna
+# Use barrnap to extract rrna
 
 mkdir rrnas
 
@@ -56,7 +55,7 @@ for file in fasta_files/*.fna; do
       "$file" > "rrnas/${name}.gff"
 done
 
-# extract rrna coordinates
+# Extract rrna coordinates
 
 mkdir 16s_rrnas
 
@@ -67,7 +66,7 @@ printf "%s:%d-%d\n", $1, $4-1, $5
 }' "$gff" > 16s_rrnas/${name}.txt
 done
 
-# use seqkit to search for 16S coordinates in files
+# Use seqkit to search for 16S coordinates in files
 
 for file in rrnas/*fa; do
 name=$(basename "$file" .fa)
@@ -75,14 +74,14 @@ seqkit grep -n -r -f "16s_rrnas/${name}.txt" \
 "$file" > "16s_rrnas/${name}.fa"
 done
 
-# count 16S per strain
+# Count 16S per strain
 
 grep -c ">" 16s_rrnas/*.fa | \
 awk -F: '{print $2}' | \
 sort -n | \
 uniq -c
 
-# check lenghth
+# Check lenghth
 
 cat 16s_rrnas/*.fa | \
 seqkit fx2tab -n -l | \
@@ -90,7 +89,7 @@ awk '{print $2}' | \
 sort -n | \
 uniq -c
 
-# use seqkit for n silico PCR V1-V9 (8F/1391R):
+# Use seqkit for n silico PCR V1-V9 (8F/1391R):
 
 mkdir V1V9
 
@@ -103,7 +102,7 @@ for file in 16s_rrnas/*.fa; do
   > "V1V9/${name}.fa"
 done
 
-# use seqkit for n silico PCR V1-V3 (27F/534R):
+# Use seqkit for n silico PCR V1-V3 (27F/534R):
 
 mkdir V1V3
 
@@ -116,7 +115,7 @@ for file in 16s_rrnas/*.fa; do
   > "V1V3/${name}.fa"
 done
 
-# use seqkit for n silico PCR V3-V4 (341F/805R):
+# Use seqkit for n silico PCR V3-V4 (341F/805R):
 
 mkdir V3V4
 
@@ -129,7 +128,7 @@ for file in 16s_rrnas/*.fa; do
   > "V3V4/${name}.fa"
 done
 
-# usearch loop
+# Usearch loop for all in silico PCR reads
 
 for region in V1V9 V1V3 V3V4; do
 
@@ -164,7 +163,7 @@ for region in V1V9 V1V3 V3V4; do
 
 done
 
-# qiime Loop
+# QIIME loop for all in silico PCR reads
 
 for region in V1V9 V1V3 V3V4; do
 
@@ -194,76 +193,3 @@ for region in V1V9 V1V3 V3V4; do
 done
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---------------------------------------------------------------------------------
-# join and allign
-
-cat V1V9/*.fa > V1V9_all.fa
-
-mafft --auto --thread 40 V1V9_all.fa > V1V9_all_aln.fa
-
-cat V1V3/*.fa > V1V3_all.fa
-
-mafft --auto --thread 40 V1V3_all.fa > V1V3_all_aln.fa
-
-cat V3V4/*.fa > V3V4_all.fa
-
-mafft --auto --thread 40 V3V4_all.fa > V3V4_all_aln.fa
-
-# use seqkit to tabulate
-
-seqkit fx2tab V1V9_all.fa > V1V9_all_tab.txt
-
-seqkit fx2tab V1V3_all.fa > V1V3_all_tab.txt
-
-seqkit fx2tab V3V4_all.fa > V3V4_all_tab.txt
-
-seqkit fx2tab V1V9_all_aln.fa > V1V9_all_aln_tab.txt
-
-seqkit fx2tab V1V3_all_aln.fa > V1V3_all_aln_tab.txt
-
-seqkit fx2tab V3V4_all_aln.fa > V3V4_all_aln_tab.txt
