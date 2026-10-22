@@ -66,6 +66,11 @@ library(qiime2R)
 
 # source("~/R/nanopore_vs_illumina_2025/analyses.R")
 # source("~/R/nanopore_vs_illumina_2025/additional_analyses.R")
+# Loads objects:
+# theoretical_plus_melt (skin mock community data)
+#   staph_theoretical_plus_melt (staph mock community data)
+#   theoretical_mock (theoretical skin mock composition)
+#   theoretical_staph_mock (theoretical staph mock composition)
 
 insilico_v1v3_otutab <- read_tsv("~/R/nanopore_vs_illumina_2025/in_silico_mock/V1V3_zotutab.tsv") %>% 
   column_to_rownames("#OTU ID")
