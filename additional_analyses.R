@@ -1,10 +1,11 @@
 ################################################################################
 #                                                                              #
-#                          FOR REVIEW - EXTRA ANALYSES                         #
+#                        FOR REVIEW - ADDITIONAL ANALYSES                      #
 #                                                                              #
 ################################################################################
 
 # source("~/R/nanopore_vs_illumina_2025/analyses.R")
+# Loads required objects
 
 ########################################################################################
 # Reviewer 1 Major comment 4: Number of sequences (library size) per sample and method #
