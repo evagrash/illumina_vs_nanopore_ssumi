@@ -4,5 +4,8 @@ The original ssUMI protocol was developed by Lin et al. (2024): https://doi.org/
 
 Content:
 - ssUMI_pipeline_and_amplicons.sh (merges UMI-tagged reads into consensus sequences, creates a ZOTU table, and assigns taxonomy to Nanopore reads)
-- Illumina_amplicons (creates a ZOTU table and assigns taxonomy to Illumina reads)
-- all_analysis.R (imports data into R; compares reads in two mock communities and five biological samples across different taxonomic levels)
+- Illumina_amplicons.sh (creates a ZOTU table and assigns taxonomy to Illumina reads)
+- analyses.R (imports data into R; compares reads in two mock communities and five biological samples across different taxonomic levels)
+- additional_analyses.R (depends on analyses.R; includes analyses suggested by reviewers)
+- in_silicom_mock_community.sh (generates an in silico mock community from NCBI genomes)
+- in_silico_mock_community.R (analysis of in silico mock community and comparison with sequenced mock; the later requires analsyes.R and additional:analyses.R)
