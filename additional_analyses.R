@@ -531,7 +531,7 @@ other_summary <- other_count %>%
 # Reviewer 2: Major comment 2: Staphylococcus distribution in real life samples #
 #################################################################################
 
-# MELT DATA REQUIRED TO BUILD PLOTS ---------------------------------------------
+# RE-MELT DATA  -----------------------------------------------------------------
 
 melt_v3v4_bar <- psmelt(rarefied_physeq_v3v4) %>%
   group_by(Sample, Person, Species, Genus, Phylum, Primers) %>%
@@ -554,39 +554,43 @@ melt_ssumi_bar <- psmelt(rarefied_physeq_ssumi) %>%
   mutate(rel_abund = Abundance / sum(Abundance)) %>%
   ungroup()
 
-# STAPH SPECIES THAT WERE DETECTED? --------------------------------------------
+# SSTAPH SPECIES THAT WERE DETECTED? -------------------------------------------
 
 staph_species <- bind_rows(
   melt_v3v4_bar,
   melt_v1v3_bar,
   melt_ssumi_bar) %>%
   filter(Genus == "Staphylococcus", !is.na(Species)) %>%
-  filter(Person %in% c("G", "L", "M", "N", "U")) %>%
+  filter(Person %in% c("A", "B", "C", "D", "E")) %>%
   group_by(Primers, Species) %>%
   summarise(total = sum(Abundance), .groups = "drop") %>%
   group_by(Primers) %>%
   ungroup()
 
-# Hardcode most common staphylococci
+# Check detected to write a list of most common species
+print(staph_species, n = 50)
+
+# BIND AND ASSIGN DISPLAY CATEGORY --------------------------------------------
+
+skin_phyla <- c("Firmicutes", "Actinobacteriota", "Proteobacteria", "Bacteroidota")
+
 staph_species_show <- c(
   "Staphylococcus_epidermidis",
   "Staphylococcus_hominis",
   "Staphylococcus_capitis")
 
-# Hardcode most common phyla
-skin_phyla <- c("Firmicutes", "Actinomycetota", "Proteobacteria", "Bacteroidota")
-
-# Hardcode plot categories
 samples_bar_long <- bind_rows(melt_v3v4_bar, melt_v1v3_bar, melt_ssumi_bar) %>%
-  filter(Person %in% c("A", "B", "C", "D", "E")) %>%
+  filter(Person %in% c("G", "L", "M", "N", "U")) %>%
   mutate(
     display_cat = case_when(
-      Genus == "Staphylococcus" & Species %in% staph_species_show ~ Species,
-      Genus == "Staphylococcus" & Species %in% c("Staphylococcus_sp.", "uncultured_bacterium")  ~ "Unidentified Staphylococcus",
-      Genus == "Staphylococcus" ~ "Other Staphylococcus",
-      Genus == "Cutibacterium" ~ "Cutibacterium",
-      Phylum %in% skin_phyla ~ Phylum,
-      TRUE ~ "Other"))
+        Genus == "Staphylococcus" & Species %in% staph_species_show ~ Species,
+        Genus == "Staphylococcus" & Species %in% c("Staphylococcus_sp.", "uncultured_bacterium") ~ "Unidentified Staphylococcus",
+        Genus == "Staphylococcus" ~ "Other Staphylococcus",
+        Genus == "Cutibacterium" ~ "Cutibacterium",
+        Phylum == "Firmicutes" ~ "Other Firmicutes",
+        Phylum == "Actinobacteriota" ~ "Other Actinobacteriota",
+        Phylum %in% skin_phyla ~ Phylum,
+        TRUE ~ "Other"))
 
 # AGGREGATE -------------------------------------------------------------------
 
@@ -594,16 +598,16 @@ bar_data <- samples_bar_long %>%
   group_by(Person, Primers, Sample, display_cat) %>%
   summarise(rel_abund = sum(rel_abund), .groups = "drop")
 
-# Factor order
+# FACTOR ORDER
 cat_order <- c(
   "Staphylococcus_epidermidis",
   "Staphylococcus_capitis",
   "Staphylococcus_hominis",
   "Other Staphylococcus",
   "Unidentified Staphylococcus",
-  "Firmicutes",
+  "Other Firmicutes",
   "Cutibacterium",
-  "Actinomycetota",
+  "Other Actinobacteriota",
   "Proteobacteria",
   "Bacteroidota",
   "Deinococcota",
@@ -618,7 +622,7 @@ bar_data <- bar_data %>%
 # COLORS ----------------------------------------------------------------------
 
 bar_colors <- c(
-  # Staphylococcus — orange family
+  # Staphylococcus
   "Staphylococcus_auricularis"   = "#FDD49E",
   "Staphylococcus_capitis"       = "#FFE873",
   "Staphylococcus_epidermidis"   = "#FE9929",
@@ -628,13 +632,17 @@ bar_colors <- c(
   "Staphylococcus_pasteuri"      = "#FFE873",
   "Unidentified Staphylococcus"  = "#7F2704",
   "Other Staphylococcus"         = "#E8601A", 
-  # Firmicutes (non-Staph)
-  "Firmicutes"                   = "#CB181D",
-  # Cutibacterium — blue family
+  
+  # Firmicutes 
+  "Other Firmicutes"             = "#CB181D",
+  
+  # Cutibacterium 
   "Cutibacterium"                = "#054A7A",
-  # Actinomycetota (non-Cuti)
-  "Actinomycetota"               = "#9ECAE1",
-  # Other phyla
+  
+  # Actinomycetota 
+  "Other Actinobacteriota"      = "#9ECAE1",
+  
+  # Other 
   "Proteobacteria"               = "#74C476",
   "Bacteroidota"                 = "#D9F0A3",
   "Deinococcota"                 = "#c9645d",
