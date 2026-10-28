@@ -646,19 +646,19 @@ write.table(all_bd_distances_summary, "~/R/nanopore_vs_illumina_2025/Paper_image
 
 ########################## PROCRUSTES ON ZOTU LEVEL ############################
 
-set.seed(126)
 procord_v3v4_v1v3 <- procrustes(pcoa_v3v4, pcoa_v1v3, symmetric = TRUE)
-set.seed(127)
 procord_v1v3_ssumi <- procrustes(pcoa_v1v3, pcoa_umi, symmetric = TRUE)
-set.seed(128)
 procord_v3v4_ssumi  <- procrustes(pcoa_v3v4, pcoa_umi, symmetric = TRUE)
 
 summary(procord_v3v4_v1v3)
 summary(procord_v1v3_ssumi)
 summary(procord_v3v4_ssumi)
 
+set.seed(126)
 protord_v3v4_v1v3 <- protest(pcoa_v3v4, pcoa_v1v3, symmetric = TRUE, permutations = 999)
+set.seed(127)
 protord_v1v3_ssumi <- protest(pcoa_v1v3, pcoa_umi, symmetric = TRUE, permutations = 999)
+set.seed(128)
 protord_v3v4_ssumi  <- protest(pcoa_v3v4, pcoa_umi, symmetric = TRUE, permutations = 999)
 
 procrustes_ord_results <- data.frame(
@@ -898,11 +898,8 @@ genus_pcoa_v1v3
 genus_pcoa_umi
 
 # Procrustes — with ordiantions
-set.seed(126)
 genus_procord_v3v4_v1v3 <- procrustes(genus_pcoa_v3v4, pcoa_v1v3, symmetric = TRUE)
-set.seed(127)
 genus_procord_v1v3_ssumi <- procrustes(genus_pcoa_v1v3, pcoa_umi, symmetric = TRUE)
-set.seed(128)
 genus_procord_v3v4_ssumi  <- procrustes(genus_pcoa_v3v4, pcoa_umi, symmetric = TRUE)
 
 summary(genus_procord_v3v4_v1v3)
@@ -910,8 +907,11 @@ summary(genus_procord_v1v3_ssumi)
 summary(genus_procord_v3v4_ssumi)
 
 # Protest for significance testing
+set.seed(126)
 genus_protord_v3v4_v1v3 <- protest(genus_pcoa_v3v4, pcoa_v1v3, symmetric = TRUE, permutations = 999)
+set.seed(127)
 genus_protord_v1v3_ssumi <- protest(genus_pcoa_v1v3, pcoa_umi, symmetric = TRUE, permutations = 999)
+set.seed(128)
 genus_protord_v3v4_ssumi  <- protest(genus_pcoa_v3v4, pcoa_umi, symmetric = TRUE, permutations = 999)
 
 
