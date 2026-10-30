@@ -9,3 +9,5 @@ Content:
 - additional_analyses.R (depends on analyses.R; includes analyses suggested by reviewers)
 - in_silico_mock_community.sh (generates an in silico mock community from NCBI genomes)
 - in_silico_mock_community.R (analysis of in silico mock community and comparison with sequenced mock; the later requires analsyes.R and additional_analyses.R)
+
+Reads are available: ENA accession PRJEB114639
