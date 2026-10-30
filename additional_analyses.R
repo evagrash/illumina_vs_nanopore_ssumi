@@ -736,4 +736,37 @@ alpha_div %>%
     sd_shannon   = sd(Shannon),
     n            = n())
 
+################################################################################
+# Reviewer 1: major comment 1: SD for Shannon                                  #
+################################################################################
+
+skin_alpha %>%
+  filter(Index_name == "Shannon") %>%
+  group_by(Primers) %>%
+  summarise(
+    mean = round(mean(Index_value), 3),
+    sd = round(sd(Index_value), 3),
+    n = n())
+
+staph_alpha %>%
+  filter(Index_name == "Shannon") %>%
+  group_by(Primers) %>%
+  summarise(
+    mean = round(mean(Index_value), 3),
+    sd = round(sd(Index_value), 3),
+    n = n())
+
+alpha_mock %>%
+  group_by(Primers) %>%
+  summarise(
+    mean_shannon = round(mean(shannon), 3),
+    sd_shannon   = round(sd(shannon), 3),
+    n            = n())
+
+staph_alpha_mokc %>%
+  group_by(Primers) %>%
+  summarise(
+    mean_shannon = round(mean(shannon), 3),
+    sd_shannon   = round(sd(shannon), 3),
+    n            = n())
 
